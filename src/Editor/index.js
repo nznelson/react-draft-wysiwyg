@@ -72,17 +72,54 @@ class WysiwygEditor extends Component {
   }
   // todo: change decorators depending on properties recceived in componentWillReceiveProps.
 
+  resetDecorator = () => {
+    this.compositeDecorator = null;
+    this.setState({
+      editorState: EditorState.set(this.state.editorState, {decorator: this.compositeDecorator})
+    })
+  }
+
   componentDidUpdate(prevProps) {
+    
     if (prevProps === this.props) return;
     const newState = {};
-    const { editorState, contentState } = this.props;
+    const { editorState, contentState, customDecorators } = this.props;
     if (!this.state.toolbar) {
       const toolbar = mergeRecursive(defaultToolbar, toolbar);
       newState.toolbar = toolbar;
     }
+
+    let updateDecorators = false;
     if (
-      hasProperty(this.props, 'editorState') &&
-      editorState !== prevProps.editorState
+      prevProps.customDecorators && 
+      customDecorators && 
+      prevProps.customDecorators.length == customDecorators.length
+    ){
+      prevProps.customDecorators.forEach((prevDecorator, i) => {
+        const decorator = customDecorators[i]
+        if (
+          decorator.strategy != prevDecorator.strategy ||
+          decorator.component != prevDecorator.component || 
+          decorator.id !== prevDecorator.id
+        ){
+          updateDecorators = true
+        }
+      })
+    } else if (
+      (!prevProps.customDecorators && customDecorators) ||
+      (prevProps.customDecorators && !customDecorators) ||
+      (prevProps.customDecorators.length != customDecorators.length)
+    ){
+      updateDecorators = true
+    }
+
+    if (updateDecorators) {
+      this.compositeDecorator = this.getCompositeDecorator(this.state.toolbar ? this.state.toolbar : newState.toolbar);
+    }
+
+    if (
+      (hasProperty(this.props, 'editorState') && editorState !== prevProps.editorState) ||
+      updateDecorators
     ) {
       if (editorState) {
         newState.editorState = EditorState.set(editorState, {
